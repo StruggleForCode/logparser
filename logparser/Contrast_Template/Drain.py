@@ -39,7 +39,7 @@ class Node:
         self.digitOrtoken = digitOrtoken
 
 
-class LogParser:
+class Drain:
     def __init__(
         self,
         log_format,
@@ -285,7 +285,7 @@ class LogParser:
                 self.get_parameter_list, axis=1
             )
         self.df_log.to_csv(
-            os.path.join(self.savePath, self.logName + "_structured.csv"), index=False
+            os.path.join(self.savePath, self.logName + "_Drain" + "_structured.csv"), index=False
         )
 
         occ_dict = dict(self.df_log["EventTemplate"].value_counts())
@@ -296,7 +296,7 @@ class LogParser:
         )
         df_event["Occurrences"] = df_event["EventTemplate"].map(occ_dict)
         df_event.to_csv(
-            os.path.join(self.savePath, self.logName + "_templates.csv"),
+            os.path.join(self.savePath, self.logName + "_Drain" + "_templates.csv"),
             index=False,
             columns=["EventId", "EventTemplate", "Occurrences"],
         )
@@ -353,7 +353,7 @@ class LogParser:
                     matchCluster.logTemplate = newTemplate
 
             count += 1
-            if count % 100000 == 0 or count == len(self.df_log):
+            if count % 1000000 == 0 or count == len(self.df_log):
                 print(
                     "Processed {0:.1f}% of log lines.".format(
                         count * 100.0 / len(self.df_log)
@@ -363,10 +363,11 @@ class LogParser:
         if not os.path.exists(self.savePath):
             os.makedirs(self.savePath)
 
-        self.outputResult(logCluL)
+        # self.outputResult(logCluL)
 
         print("Parsing done. [Time taken: {!s}]".format(datetime.now() - start_time))
-        return format(datetime.now() - start_time)
+        print(len(logCluL))
+        return format(datetime.now() - start_time), len(logCluL)
 
     def load_data(self):
         headers, regex = self.generate_logformat_regex(self.log_format)

@@ -39,7 +39,7 @@ class Node:
         self.digitOrtoken = digitOrtoken
 
 
-class LogParser:
+class Drain:
     def __init__(
         self,
         log_format,
@@ -285,7 +285,7 @@ class LogParser:
                 self.get_parameter_list, axis=1
             )
         self.df_log.to_csv(
-            os.path.join(self.savePath, self.logName + "_structured.csv"), index=False
+            os.path.join(self.savePath, self.logName + "_Drain" + "_structured.csv"), index=False
         )
 
         occ_dict = dict(self.df_log["EventTemplate"].value_counts())
@@ -296,7 +296,7 @@ class LogParser:
         )
         df_event["Occurrences"] = df_event["EventTemplate"].map(occ_dict)
         df_event.to_csv(
-            os.path.join(self.savePath, self.logName + "_templates.csv"),
+            os.path.join(self.savePath, self.logName + "_Drain" + "_templates.csv"),
             index=False,
             columns=["EventId", "EventTemplate", "Occurrences"],
         )

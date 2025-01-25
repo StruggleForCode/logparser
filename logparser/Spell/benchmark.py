@@ -123,7 +123,12 @@ benchmark_settings = {
     "OpenStack": {
         "log_file": "OpenStack/OpenStack_2k.log",
         "log_format": "<Logrecord> <Date> <Time> <Pid> <Level> <Component> \[<ADDR>\] <Content>",
-        "regex": [r"((\d+\.){3}\d+,?)+", r"/.+?\s", r"\d+"],
+        "regex": [
+            r"((\d+\.){3}\d+,?)+",
+            r"/.+?\s",
+            r"\d+",
+            r"(\[instance:\s*)[^]]+(\])"
+        ],
         "tau": 0.9,
     },
     "Mac": {
@@ -147,16 +152,18 @@ for dataset, setting in benchmark_settings.items():
         rex=setting["regex"],
         tau=setting["tau"],
     )
-    parser.parse(log_file)
+    TimeToken = parser.parse(log_file)
 
-    F1_measure, accuracy = evaluator.evaluate(
+    F1_measure, accuracy, Precision, Recall = evaluator.evaluate(
         groundtruth=os.path.join(indir, log_file + "_structured.csv"),
         parsedresult=os.path.join(output_dir, log_file + "_structured.csv"),
     )
-    bechmark_result.append([dataset, F1_measure, accuracy])
+
+    bechmark_result.append(["Spell", dataset, F1_measure, accuracy, Precision, Recall, TimeToken])
 
 print("\n=== Overall evaluation results ===")
-df_result = pd.DataFrame(bechmark_result, columns=["Dataset", "F1_measure", "Accuracy"])
+df_result = pd.DataFrame(bechmark_result,
+                         columns=["Algorithm", "Dataset", "F1_measure", "Accuracy", "Precision", "Recall", "TimeToken"])
 df_result.set_index("Dataset", inplace=True)
 print(df_result)
 df_result.to_csv("Spell_bechmark_result.csv", float_format="%.6f")

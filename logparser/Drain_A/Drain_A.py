@@ -49,6 +49,7 @@ class LogParser:
         st=0.4,
         maxChild=100,
         rex=[],
+        delimiter_pattern="",
         keep_para=True,
     ):
         """
@@ -71,6 +72,7 @@ class LogParser:
         self.df_log = None
         self.log_format = log_format
         self.rex = rex
+        self.delimiter_pattern = delimiter_pattern
         self.keep_para = keep_para
 
     '''
@@ -248,7 +250,7 @@ class LogParser:
             if word == seq2[i]:
                 retVal.append(word)
             else:
-                retVal.append("<*>")
+                retVal.append(self.process_strings(word, seq2[i]))
 
             i += 1
 
@@ -442,3 +444,107 @@ class LogParser:
             else [parameter_list]
         )
         return parameter_list
+
+
+    def split_string_preserve_delimiters(self, s):
+        # 分割字符串，使用非字母和数字字符进行划分，并保留所有分隔符
+        # return re.split(r'([^\w*])', s)
+        # return re.split(r'([^a-zA-Z0-9*])', s)  # 使用捕获组保留分隔符
+        """
+        分割字符串，使用指定的分隔符模式划分，并保留所有分隔符。
+        如果字符串中没有分隔符，返回包含原始字符串的列表。
+        """
+        # 使用捕获组进行分割
+        if not self.delimiter_pattern:
+            return [s]
+        result = re.split(f"({self.delimiter_pattern})", s)
+
+        # 如果结果为空或仅包含空字符串，返回原字符串作为单元素列表
+        return [s] if not result or all(not part for part in result) else result
+
+    def LCS(self, seq1, seq2):
+        lengths = [[0 for j in range(len(seq2) + 1)] for i in range(len(seq1) + 1)]
+        # row 0 and column 0 are initialized to 0 already
+        for i in range(len(seq1)):
+            for j in range(len(seq2)):
+                if seq1[i] == seq2[j]:
+                    lengths[i + 1][j + 1] = lengths[i][j] + 1
+                else:
+                    lengths[i + 1][j + 1] = max(lengths[i + 1][j], lengths[i][j + 1])
+
+        # read the substring out from the matrix
+        result = []
+        lenOfSeq1, lenOfSeq2 = len(seq1), len(seq2)
+        while lenOfSeq1 != 0 and lenOfSeq2 != 0:
+            if lengths[lenOfSeq1][lenOfSeq2] == lengths[lenOfSeq1 - 1][lenOfSeq2]:
+                lenOfSeq1 -= 1
+            elif lengths[lenOfSeq1][lenOfSeq2] == lengths[lenOfSeq1][lenOfSeq2 - 1]:
+                lenOfSeq2 -= 1
+            else:
+                assert seq1[lenOfSeq1 - 1] == seq2[lenOfSeq2 - 1]
+                result.insert(0, seq1[lenOfSeq1 - 1])
+                lenOfSeq1 -= 1
+                lenOfSeq2 -= 1
+        return result
+
+    def getCommonTemplate(self, lcs, seq):
+        retVal = []
+        if not lcs:
+            return retVal
+
+        # 因为在 seq 中从左到右进行匹配，而 lcs 是按从后向前回溯生成的，需要反转顺序以便匹配。
+        lcs = lcs[::-1]
+        i = 0
+        # 如果当前 token 等于 lcs 的最后一个元素（lcs[-1]），将其加入模板，并从 lcs 中移除该元素。
+        # 如果不匹配，添加占位符 <*>。
+        for token in seq:
+            i += 1
+            if token == lcs[-1]:
+                retVal.append(token)
+                lcs.pop()
+            else:
+                retVal.append("<*>")
+            if not lcs:
+                break
+        if i < len(seq):
+            retVal.append("<*>")
+        return "".join(self.compress_repeated_delimiters(retVal))
+
+    def compress_repeated_delimiters(self, lcs):
+        """
+        合并连续相同的字符（例如多个 '/' 合并为一个 '/'）
+        """
+        if not lcs:
+            return []
+
+        compressed = [lcs[0]]  # 初始化结果数组，包含第一个元素
+        for i in range(1, len(lcs)):
+            # 如果当前字符和前一个字符不同，添加到结果中
+            if lcs[i] != lcs[i - 1]:
+                compressed.append(lcs[i])
+        return compressed
+
+    def process_strings(self, str1, str2):
+        """
+        主函数，处理两个字符串
+        """
+        if str1 == str2:
+            return str1
+        # 切割字符串
+        rexStr2 = re.sub(r'<\*>', '', str2)
+        split2 = self.split_string_preserve_delimiters(rexStr2)
+        split1 = self.split_string_preserve_delimiters(str1)
+        if len(split2) == 1 or len(split1) == 1:
+            return "<*>"
+
+        split1 = list(filter(None, split1))
+        split2 = list(filter(None, split2))
+
+        # 找到最长公共子序列
+        lcs = list(filter(None, self.compress_repeated_delimiters(self.LCS(split1, split2))))
+        if not lcs:
+            return "<*>"
+
+        # 根据 LCS 替换并合并结果
+        return self.getCommonTemplate(lcs, split1)
+
